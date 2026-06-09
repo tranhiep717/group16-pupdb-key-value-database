@@ -1,141 +1,103 @@
-# Student Management System using PupDB
+# Đề tài: PupDB - A Simple File-Based Key-Value Database in Python
 
-## 1. Tên đề tài
+## 1. Thông tin Nhóm 21
 
-**Student Management System using PupDB**
+| STT | Họ và Tên | MSSV |
+| :---: | :--- | :--- |
+| 1 | | |
+| 2 | | |
+| 3 | | |
+| 4 | | |
 
-Đề tài demo thư viện **PupDB - A Simple File-Based Key-Value Database in Python** thông qua một chương trình quản lý sinh viên chạy trên terminal/cmd.
+## 2. Mục tiêu dự án
+Dự án nhằm nghiên cứu và mở rộng một cơ sở dữ liệu Key-Value đơn giản (PupDB) thành một mô hình **Distributed Key-Value Database Mini**. Thông qua việc tự tay lập trình và mô phỏng, dự án giúp hiểu rõ bản chất hoạt động của các hệ thống phân tán như: định tuyến dữ liệu, phân mảnh (Sharding), sao chép (Replication), truy vấn phân tán (Distributed Query) và cơ chế chịu lỗi (Failover).
 
-## 2. Thành viên nhóm 21
+## 3. Công nghệ sử dụng
+- **Ngôn ngữ lập trình:** Python 3
+- **Thư viện chính:** PupDB (lưu trữ), Flask (tạo REST API cho mô hình phân tán), Requests (giao tiếp HTTP).
+- **Môi trường hoạt động:** Windows/Linux Terminal.
 
-| STT | Họ tên | MSSV |
-| --- | --- | --- |
-| 1 |  |  |
-| 2 |  |  |
-| 3 |  |  |
-| 4 |  |  |
+---
 
-## 3. Mô tả PupDB
+## 4. Các khái niệm cốt lõi
 
-PupDB là một thư viện cơ sở dữ liệu key-value đơn giản, được viết bằng Python. Thư viện này lưu dữ liệu trực tiếp vào file JSON, vì vậy phù hợp với các chương trình nhỏ, bài demo hoặc các ứng dụng cần lưu dữ liệu đơn giản mà không muốn cài đặt hệ quản trị cơ sở dữ liệu phức tạp.
+### PupDB là gì?
+PupDB là một thư viện cơ sở dữ liệu key-value rất nhỏ gọn, được viết bằng Python. PupDB lưu trữ toàn bộ dữ liệu trực tiếp vào một file văn bản định dạng JSON cục bộ. 
 
-Trong dự án này, PupDB được dùng để lưu thông tin sinh viên vào file `students.json`.
+### Key-Value Database là gì?
+Là mô hình lưu trữ phi quan hệ (NoSQL) trong đó dữ liệu được tổ chức dưới dạng cặp từ khóa - giá trị. Key là định danh duy nhất (ví dụ: Mã sinh viên), còn Value là dữ liệu tương ứng của định danh đó (ví dụ: object chứa Tên, Lớp, Điểm).
 
-## 4. Mô tả key-value database
+### Mô hình hệ thống dự án
+Hệ thống chuyển từ mô hình Monolithic (1 file JSON duy nhất) sang mô hình Phân tán (Distributed) gồm:
+- **Client (main.py):** Giao diện terminal cung cấp Menu thao tác cho người dùng.
+- **Coordinator (coordinator.py):** Máy chủ trung tâm nhận Request từ Client và điều phối tới các Node.
+- **Các Nodes (node.py):** Các Shard chạy độc lập ở các Port khác nhau, mỗi Node sở hữu một file JSON cục bộ để chứa một phần dữ liệu.
 
-Key-value database là kiểu cơ sở dữ liệu lưu dữ liệu theo cặp:
+### Coordinator là gì?
+Coordinator là thành phần đứng giữa Client và các Nodes. Nhiệm vụ chính là nhận yêu cầu, dùng thuật toán Hash (MD5) để quyết định xem Key (Mã SV) này sẽ thuộc về Node nào, sau đó định tuyến (route) request đến Node đó. Nó không trực tiếp lưu dữ liệu.
 
-- **Key**: khóa định danh duy nhất dùng để tìm dữ liệu.
-- **Value**: giá trị hoặc thông tin được lưu tương ứng với key.
+### Sharding là gì?
+Sharding (Phân mảnh) là kỹ thuật chia nhỏ một cơ sở dữ liệu lớn ra thành nhiều phần nhỏ hơn (gọi là Shard). Trong dự án này, thay vì lưu toàn bộ sinh viên vào 1 file `students.json`, dữ liệu được chia nhỏ và phân tán lưu trên `shard_0.json`, `shard_1.json`, `shard_2.json`.
 
-Trong chương trình này:
+### Distributed Query là gì?
+Distributed Query là việc gửi lệnh truy vấn từ Coordinator đến toàn bộ các Shard cùng một lúc. Sau khi các Shard trả kết quả về, Coordinator sẽ gom nhóm (aggregate) kết quả lại thành một danh sách duy nhất và trả cho Client.
 
-- **Key** là mã sinh viên.
-- **Value** là thông tin sinh viên gồm họ tên, lớp và GPA.
+### Replication là gì?
+Replication (Sao chép) là cơ chế tạo ra nhiều bản sao (replica) cho mỗi Shard để chống mất dữ liệu. Trong hệ thống, mỗi khi có yêu cầu ghi vào file chính `shard_X.json`, Node sẽ đồng thời ghi một bản sao vào `shard_X_replica.json`.
 
-Ví dụ:
+### Failover là gì?
+Failover là cơ chế tự động chuyển đổi sang hệ thống dự phòng khi hệ thống chính gặp sự cố. Nếu file `shard_X.json` bị lỗi hoặc mất mạng, Node sẽ tự động truy vấn dữ liệu từ file dự phòng `shard_X_replica.json` giúp ứng dụng tiếp tục hoạt động mà không bị sập (Crash).
 
-```json
-{
-  "SV001": {
-    "ho_ten": "Nguyen Van A",
-    "lop": "CNTT1",
-    "gpa": 3.4
-  }
-}
+---
+
+## 5. Hướng dẫn sử dụng
+
+### Cách cài đặt
+1. Yêu cầu cài đặt sẵn Python (>= 3.7) trên máy tính.
+2. Clone mã nguồn về và mở Terminal tại thư mục gốc của project.
+3. Tạo môi trường ảo và kích hoạt:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+4. Cài đặt các thư viện phụ thuộc:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Cách chạy chương trình
+Vì đây là hệ thống phân tán nên cần chạy đồng thời Coordinator và các Nodes. Bạn có thể tự động bật toàn bộ bằng cách chạy file Batch (trên Windows):
+```cmd
+.\run_all.bat
 ```
+*(File này sẽ tự động mở 4 cửa sổ ngầm: 1 Coordinator và 3 Shard)*
 
-## 5. Chức năng demo
-
-Chương trình có các chức năng chính:
-
-1. Thêm sinh viên.
-2. Xem sinh viên theo mã sinh viên.
-3. Cập nhật thông tin sinh viên.
-4. Xóa sinh viên.
-5. Liệt kê toàn bộ sinh viên.
-6. Xóa toàn bộ dữ liệu.
-7. Thoát chương trình.
-
-Chương trình cũng có xử lý lỗi cơ bản:
-
-- Không cho để trống mã sinh viên.
-- Không cho thêm trùng mã sinh viên.
-- GPA phải là số.
-- Báo lỗi nếu tìm kiếm, cập nhật hoặc xóa sinh viên không tồn tại.
-
-## 6. Cách cài đặt
-
-Yêu cầu máy đã cài Python.
-
-Bước 1: Clone repo về máy:
-
-```bash
-git clone https://github.com/<username>/group21-pupdb-student-management.git
-cd group21-pupdb-student-management
-```
-
-Bước 2: Tạo môi trường ảo:
-
-```bash
-python -m venv .venv
-```
-
-Bước 3: Kích hoạt môi trường ảo.
-
-Trên Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Trên macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Bước 4: Cài thư viện cần thiết:
-
-```bash
-pip install -r requirements.txt
-```
-
-## 7. Cách chạy chương trình
-
-Chạy lệnh:
-
+Sau khi hệ thống backend đã chạy, mở một cửa sổ Terminal mới, kích hoạt môi trường ảo (nếu chưa) và chạy Client UI:
 ```bash
 python main.py
 ```
 
-Sau đó chọn chức năng theo menu hiển thị trên terminal/cmd.
+### Cách Test Demo trên Terminal
+Chương trình cung cấp sẵn một Menu 11 chức năng. Để test các tính năng phân tán:
+1. **Test Sharding:** Bấm số `10` để tạo tự động 50 sinh viên. Sau đó bấm số `6` để xem dữ liệu đã được chia đều cho 3 Shard.
+2. **Test Replication:** Vào thư mục `data/` trong mã nguồn, mở file `shard_1.json` và `shard_1_replica.json` lên so sánh. Dữ liệu bên trong hoàn toàn giống nhau.
+3. **Test Distributed Query:** Bấm số `5` để yêu cầu Coordinator lấy dữ liệu từ cả 3 Shard gộp lại thành danh sách 50 sinh viên.
+4. **Test Failover:** Bấm số `8` để giả lập lỗi (Ví dụ chọn Shard 0). Tiếp theo bấm số `2` và nhập một sinh viên thuộc Shard 0. Hệ thống không lỗi mà hiện thông báo `TRẠNG THÁI: LẤY TỪ REPLICA (FAILOVER THÀNH CÔNG)`. Bấm lại `8` và chọn `3` để phục hồi.
 
-## 8. Cấu trúc thư mục
+---
 
-```text
-group21-pupdb-student-management/
-├── README.md
-├── requirements.txt
-├── main.py
-├── students.json
-├── docs/
-│   └── bao-cao-tien-do.md
-└── images/
-```
+## 6. Hình ảnh minh chứng
 
-## 9. Kết quả mong đợi
+*(Chèn ảnh kết quả chạy Sharding vào đây)*
+![Demo Sharding]()
 
-Sau khi chạy chương trình, người dùng có thể quản lý danh sách sinh viên bằng giao diện dòng lệnh. Dữ liệu sinh viên được lưu trong file `students.json`, trong đó mã sinh viên là key và thông tin sinh viên là value.
+*(Chèn ảnh kết quả test Distributed Query vào đây)*
+![Demo Distributed Query]()
 
-Chương trình phù hợp để demo trước giảng viên vì:
+*(Chèn ảnh kết quả test Failover vào đây)*
+![Demo Failover]()
 
-- Dễ cài đặt.
-- Dễ chạy bằng terminal/cmd.
-- Có menu tiếng Việt rõ ràng.
-- Thể hiện được cách dùng PupDB để lưu dữ liệu key-value vào file JSON.
+---
 
-## 10. Link tham khảo
-
-- Repo PupDB gốc: https://github.com/tuxmonk/pupdb
-- Repo nhóm dự kiến: https://github.com/<username>/group21-pupdb-student-management
+## 7. Kết luận
+Dự án đã thành công trong việc áp dụng thư viện siêu nhẹ PupDB để xây dựng và trực quan hóa các khái niệm cực kỳ phức tạp của Hệ thống Cơ sở dữ liệu phân tán. Mô hình không sử dụng các Database COTS (như MongoDB, Redis) mà hoàn toàn tự xây dựng logic điều hướng và phân mảnh trên Python thuần túy. Nó đáp ứng tốt tính trực quan, phục vụ cho việc học tập, nghiên cứu và báo cáo môn học.

@@ -1,1 +1,3 @@
 pupdb
+flask
+requests
